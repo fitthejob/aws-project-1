@@ -1,0 +1,40 @@
+name: Deploy CloudFormation Stacks
+on:
+  push:
+    branches: [ main ] # Trigger on every push to main
+
+permissions:
+  id-token: write # Required for OIDC
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::123456789012:role/GitHubDeployRole
+          aws-region: us-east-1
+
+      - name: Lint Templates
+        run: |
+          pip install cfn-lint
+          cfn-lint -t **/*.yaml # Checks for errors before deploying
+
+      - name: Package and Deploy
+        run: |
+          # 1. Package: Uploads child templates to S3 and creates 'packaged.yaml'
+          aws cloudformation package \
+            --template-file main.template.yaml \
+            --s3-bucket my-template-storage-bucket \
+            --output-template-file packaged.yaml
+
+          # 2. Deploy: Executes the packaged template
+          aws cloudformation deploy \
+            --template-file packaged.yaml \
+            --stack-name Proj1-FullStack \
+            --capabilities CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND
