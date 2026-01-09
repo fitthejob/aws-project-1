@@ -34,15 +34,15 @@ Resources:
           FromPort: 5432
           ToPort: 5432
           SourceSecurityGroupId: !Ref AppServerSecurityGroup
-  
+
   AppServerSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-        GroupDescription: Allow traffic from Web Tier only.
-        VpcId: !Ref VpcId
-        SecurityGroupIngress:
-          - IpProtocol: tcp
-            #Default web server port
-            FromPort: 8080
-            ToPort: 8080
-            SourceSecurityGroupId: !Ref WebServerSecurityGroup
+      GroupDescription: Allow traffic from Web Tier only.
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          #Default web server port
+          FromPort: 8080
+          ToPort: 8080
+          SourceSecurityGroupId: !Ref WebServerSecurityGroup
