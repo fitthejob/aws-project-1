@@ -1,0 +1,295 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: |
+  CloudFormation template to create a VPC with 12 equally sized subnets across 3 AZs.
+
+Parameters:
+  VpcCIDR:
+    Type: String
+    Default: 10.10.0.0/16
+
+Resources:
+  DevVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VpcCIDR
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: Dev-VPC
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: Dev-IGW
+
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref DevVPC
+      InternetGatewayId: !Ref InternetGateway
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref DevVPC
+      Tags:
+        - Key: Name
+          Value: Public-Routes
+
+  DefaultPublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: AttachGateway
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  NatEIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: Dev-NAT-EIP
+
+  DevNatGateway:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatEIP.AllocationId
+      SubnetId: !Ref WebSubnetAZ1
+      Tags:
+        - Key: Name
+          Value: Dev-NAT-GW
+
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref DevVPC
+      Tags:
+        - Key: Name
+          Value: Private-Routes
+
+  DefaultPrivateRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref DevNatGateway
+
+  # This function calculates 16 subnets of /20 (12 bits of host space)
+  # 32 - 12 = 20.
+
+  WebSubnetAZ1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref DevVPC
+      AvailabilityZone: !Select
+        - 0
+        - !GetAZs ''
+      # Math: Take the VPC CIDR, create 16 subnets, and pick the 1st one (Index 0)
+      CidrBlock: !Select
+        - 0
+        - !Cidr
+          - !GetAtt DevVPC.CidrBlock
+          - 16
+          - 12
+      Tags:
+        - Key: Name
+          Value: Web-Tier-AZ-A
+
+  WebSubnetAZ2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref DevVPC
+      AvailabilityZone: !Select
+        - 1
+        - !GetAZs ''
+      CidrBlock: !Select
+        - 1
+        - !Cidr
+          - !GetAtt DevVPC.CidrBlock
+          - 16
+          - 12
+      Tags:
+        - Key: Name
+          Value: Web-Tier-AZ-B
+
+  WebSubnetAZ3:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref DevVPC
+      AvailabilityZone: !Select
+        - 2
+        - !GetAZs ''
+      CidrBlock: !Select
+        - 2
+        - !Cidr
+          - !GetAtt DevVPC.CidrBlock
+          - 16
+          - 12
+      Tags:
+        - Key: Name
+          Value: Web-Tier-AZ-C
+
+  DBSubnetAZ1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref DevVPC
+      AvailabilityZone: !Select
+        - 0
+        - !GetAZs ''
+      CidrBlock: !Select
+        - 3
+        - !Cidr
+          - !GetAtt DevVPC.CidrBlock
+          - 16
+          - 12
+      Tags:
+        - Key: Name
+          Value: DB-Tier-AZ-A
+
+  DBSubnetAZ2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref DevVPC
+      AvailabilityZone: !Select
+        - 1
+        - !GetAZs ''
+      CidrBlock: !Select
+        - 4
+        - !Cidr
+          - !GetAtt DevVPC.CidrBlock
+          - 16
+          - 12
+      Tags:
+        - Key: Name
+          Value: DB-Tier-AZ-B
+
+  DBSubnetAZ3:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref DevVPC
+      AvailabilityZone: !Select
+        - 2
+        - !GetAZs ''
+      CidrBlock: !Select
+        - 5
+        - !Cidr
+          - !GetAtt DevVPC.CidrBlock
+          - 16
+          - 12
+      Tags:
+        - Key: Name
+          Value: DB-Tier-AZ-C
+
+  AppSubnetAZ1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref DevVPC
+      AvailabilityZone: !Select
+        - 0
+        - !GetAZs ''
+      CidrBlock: !Select
+        - 6
+        - !Cidr
+          - !GetAtt DevVPC.CidrBlock
+          - 16
+          - 12
+      Tags:
+        - Key: Name
+          Value: App-Tier-AZ-A
+
+  AppSubnetAZ2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref DevVPC
+      AvailabilityZone: !Select
+        - 1
+        - !GetAZs ''
+      CidrBlock: !Select
+        - 7
+        - !Cidr
+          - !GetAtt DevVPC.CidrBlock
+          - 16
+          - 12
+      Tags:
+        - Key: Name
+          Value: App-Tier-AZ-B
+
+  AppSubnetAZ3:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref DevVPC
+      AvailabilityZone: !Select
+        - 2
+        - !GetAZs ''
+      CidrBlock: !Select
+        - 8
+        - !Cidr
+          - !GetAtt DevVPC.CidrBlock
+          - 16
+          - 12
+      Tags:
+        - Key: Name
+          Value: App-Tier-AZ-C
+
+  RsvSubnetAZ1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref DevVPC
+      AvailabilityZone: !Select
+        - 0
+        - !GetAZs ''
+      CidrBlock: !Select
+        - 9
+        - !Cidr
+          - !GetAtt DevVPC.CidrBlock
+          - 16
+          - 12
+      Tags:
+        - Key: Name
+          Value: Rsv-Tier-AZ-A
+
+  RsvSubnetAZ2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref DevVPC
+      AvailabilityZone: !Select
+        - 1
+        - !GetAZs ''
+      CidrBlock: !Select
+        - 10
+        - !Cidr
+          - !GetAtt DevVPC.CidrBlock
+          - 16
+          - 12
+      Tags:
+        - Key: Name
+          Value: Rsv-Tier-AZ-B
+
+  RsvSubnetAZ3:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref DevVPC
+      AvailabilityZone: !Select
+        - 2
+        - !GetAZs ''
+      CidrBlock: !Select
+        - 11
+        - !Cidr
+          - !GetAtt DevVPC.CidrBlock
+          - 16
+          - 12
+      Tags:
+        - Key: Name
+          Value: Rsv-Tier-AZ-C
+
+Outputs:
+  DevVPC:
+    Description: VPC ID
+    Value: !Ref DevVPC
+    Export:
+      Name: !Sub ${AWS::StackName}-net-stack

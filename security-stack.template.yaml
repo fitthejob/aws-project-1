@@ -1,0 +1,48 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: |
+  CloudFormation template to Security Groups.
+
+Parameters:
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: The VPC ID where security groups will be created.
+
+Resources:
+  WebServerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Enable HTTP and HTTPS access from the internet.
+      VpcId: !ImportValue "Dev-VPC-net-stack"
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+
+  DBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow traffic from App Tier only.
+      VpcId: !ImportValue "Dev-VPC-net-stack"
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          #Default PostgreSQL port
+          FromPort: 5432
+          ToPort: 5432
+          SourceSecurityGroupId: !Ref AppServerSecurityGroup
+  
+  AppServerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+        GroupDescription: Allow traffic from Web Tier only.
+        VpcId: !ImportValue "Dev-VPC-net-stack"
+        SecurityGroupIngress:
+          - IpProtocol: tcp
+            #Default web server port
+            FromPort: 8080
+            ToPort: 8080
+            SourceSecurityGroupId: !Ref WebServerSecurityGroup
