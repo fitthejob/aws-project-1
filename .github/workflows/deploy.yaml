@@ -17,7 +17,7 @@ jobs:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::123456789012:role/GitHubDeployRole
+          role-to-assume: arn:aws:iam::205500199161:role/GitHubDeploymentRole
           aws-region: us-east-1
 
       - name: Lint Templates
@@ -25,16 +25,44 @@ jobs:
           pip install cfn-lint
           cfn-lint -t **/*.yaml # Checks for errors before deploying
 
-      - name: Package and Deploy
+- name: Package and Deploy to DEV OU
         run: |
-          # 1. Package: Uploads child templates to S3 and creates 'packaged.yaml'
+          # 1. COMPILE PACKAGE TEMPLATES
           aws cloudformation package \
             --template-file main.template.yaml \
-            --s3-bucket my-template-storage-bucket \
+            --s3-bucket cloudformation-templates-dev-8746 \
             --output-template-file packaged.yaml
 
-          # 2. Deploy: Executes the packaged template
-          aws cloudformation deploy \
-            --template-file packaged.yaml \
-            --stack-name Proj1-FullStack \
-            --capabilities CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND
+          # 2. CREATE OR UPDATE STACKSET
+          if aws cloudformation describe-stack-set --stack-set-name Proj1-Dev-Infrastructure > /dev/null 2>&1; then
+            echo "StackSet exists. Updating template for DEV OU only..."
+            OP_ID=$(aws cloudformation update-stack-set \
+              --stack-set-name Proj1-Dev-Infrastructure \
+              --template-body file://packaged.yaml \
+              --permission-model SERVICE_MANAGED \
+              --deployment-targets OrganizationalUnitIds="ou-h0t7-glk2o7pa" \
+              --auto-deployment Enabled=true,RetainStacksOnAccountRemoval=false \
+              --capabilities CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
+              --region us-east-1 \
+              --operation-preferences FailureToleranceCount=0,MaxConcurrentCount=1 \
+              --query "OperationId" --output text)
+            echo "Update started for OU ou-h0t7-glk2o7pa. Operation ID: $OP_ID"
+          else
+            echo "StackSet does not exist. Creating..."
+            aws cloudformation create-stack-set \
+              --stack-set-name Proj1-Dev-Infrastructure \
+              --template-body file://packaged.yaml \
+              --permission-model SERVICE_MANAGED \
+              --auto-deployment Enabled=true,RetainStacksOnAccountRemoval=false \
+              --capabilities CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
+              --region us-east-1
+            
+            echo "Creating instances specifically in DEV OU..."
+            OP_ID=$(aws cloudformation create-stack-instances \
+              --stack-set-name Proj1-Dev-Infrastructure \
+              --deployment-targets OrganizationalUnitIds="ou-h0t7-glk2o7pa" \
+              --regions "us-east-1" \
+              --operation-preferences FailureToleranceCount=0,MaxConcurrentCount=1 \
+              --query "OperationId" --output text)
+            echo "Initial deployment started. Operation ID: $OP_ID"
+          fi
