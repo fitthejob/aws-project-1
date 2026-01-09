@@ -288,8 +288,6 @@ Resources:
           Value: Rsv-Tier-AZ-C
 
 Outputs:
-  DevVPC:
+  VpcID:
     Description: VPC ID
     Value: !Ref DevVPC
-    Export:
-      Name: !Sub ${AWS::StackName}-net-stack

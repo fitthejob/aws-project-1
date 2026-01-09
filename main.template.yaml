@@ -12,7 +12,7 @@ Resources:
     Properties:
       TemplateURL: ./security-stack.template.yaml
       Parameters:
-        VpcId: !GetAtt NetworkStack.Outputs.DevVPC
+        VpcId: !GetAtt NetworkStack.Outputs.VpcID
     DependsOn: NetworkStack
 
 Metadata:

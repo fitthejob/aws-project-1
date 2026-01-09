@@ -12,7 +12,7 @@ Resources:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: Enable HTTP and HTTPS access from the internet.
-      VpcId: !ImportValue "Dev-VPC-net-stack"
+      VpcId: !Ref VpcId
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 80
@@ -27,7 +27,7 @@ Resources:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: Allow traffic from App Tier only.
-      VpcId: !ImportValue "Dev-VPC-net-stack"
+      VpcId: !Ref VpcId
       SecurityGroupIngress:
         - IpProtocol: tcp
           #Default PostgreSQL port
@@ -39,7 +39,7 @@ Resources:
     Type: AWS::EC2::SecurityGroup
     Properties:
         GroupDescription: Allow traffic from Web Tier only.
-        VpcId: !ImportValue "Dev-VPC-net-stack"
+        VpcId: !Ref VpcId
         SecurityGroupIngress:
           - IpProtocol: tcp
             #Default web server port
