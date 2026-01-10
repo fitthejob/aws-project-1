@@ -3,9 +3,11 @@
 name: Deploy CloudFormation Stacks
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
     paths-ignore:
-      - 'README.md
+      - 'README.md'
+      - 'docs/**'
 
 permissions:
   id-token: write 
