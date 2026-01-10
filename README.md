@@ -100,6 +100,20 @@ The workflow defined in `deploy.yaml` automates the following stages:
 
 ---
 
+## Security & Secrets Management
+
+To adhere to the Principle of Least Privilege and prevent sensitive data exposure, this project utilizes a hardened CI/CD security posture:
+
+**GitHub Actions OIDC:** Instead of storing long-lived AWS Access Keys, this pipeline uses OpenID Connect (OIDC) to assume an IAM Role dynamically. This eliminates the risk of credential leakage.
+
+**Infrastructure Masking:** All AWS Account IDs (Management and Member) are stored as GitHub Actions Secrets. This ensures that the public repository contains only the architectural logic, while environment-specific identifiers remain private.
+
+**Cross-Account Handshake:** Deployment is managed via a Self-Managed StackSet model. A secure trust relationship is established between the Management Account and the Member Account via the AWSCloudFormationStackSetExecutionRole.
+
+**S3 Artifact Protection:** Deployment templates are packaged and stored in a private S3 bucket with a Restrictive Bucket Policy that only grants access to the specific deployment roles involved in the handshake.
+
+---
+
 ## Verification
 
 To verify the deployment status via the AWS CLI from the Management Account:
@@ -111,5 +125,35 @@ aws cloudformation describe-stack-set --stack-set-name Proj1-Dev-Infrastructure
 
 **Check status in the specific Member Account**
 ```bash
-aws cloudformation list-stack-instances --stack-set-name Proj1-Dev-Infrastructure --stack-instance-account 017677777575
+aws cloudformation list-stack-instances --stack-set-name Proj1-Dev-Infrastructure --stack-instance-account 123456789012
+```
+
+---
+
+## Architecture
+
+```
+[ GitHub Repository ]
+       |
+       | (1) Push to 'main'
+       v
+[ GitHub Actions Runner ]
+       |
+       | (2) OIDC Auth (AssumeRole)
+       | (3) Package & Upload Templates
+       v
++-----------------------------+          +---------------------------+
+|    Management Account       |          |      Member Account       |
+|      (Hub / Admin)          |          |     (Spoke / Target)      |
+|                             |          |                           |
+|  +-----------------------+  |          |  +---------------------+  |
+|  |   S3 Artifact Bucket  |--|---(4)------>|  CloudFormation     |  |
+|  | (Templates/Artifacts) |  |   Pull   |  |   Execution Role    |  |
+|  +-----------------------+  |          |  +---------------------+  |
+|              |              |          |             |             |
+|  +-----------------------+  |          |  +---------------------+  |
+|  |  CFN StackSet Admin   |--|---(5)------>|   Deployed Stack    |  |
+|  |      (Control)        |  |  Update  |  |    (VPC, Subnets)   |  |
+|  +-----------------------+  |          |  +---------------------+  |
++-----------------------------+          +---------------------------+
 ```
