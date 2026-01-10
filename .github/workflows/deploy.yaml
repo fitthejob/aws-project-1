@@ -1,3 +1,5 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+
 name: Deploy CloudFormation Stacks
 on:
   push:
@@ -17,12 +19,13 @@ jobs:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::205500199161:role/GitHubDeploymentRole
+          role-to-assume: arn:aws:iam::${{secrets.MANAGEMENT_ACCOUNT_ID}}:role/GitHubDeploymentRole
           aws-region: us-east-1
 
       - name: Lint Templates
         run: |
           pip install cfn-lint
+          shopt -s globstar
           cfn-lint -t **/*.yaml 
 
       - name: Package and Deploy (Self-Managed)
@@ -40,7 +43,7 @@ jobs:
               --stack-set-name Proj1-Dev-Infrastructure \
               --template-body file://packaged.yaml \
               --permission-model SELF_MANAGED \
-              --administration-role-arn arn:aws:iam::205500199161:role/AWSCloudFormationStackSetAdministrationRole \
+              --administration-role-arn arn:aws:iam::${{secrets.MANAGEMENT_ACCOUNT_ID}}:role/AWSCloudFormationStackSetAdministrationRole \
               --capabilities CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
               --region us-east-1
           else
@@ -49,13 +52,13 @@ jobs:
               --stack-set-name Proj1-Dev-Infrastructure \
               --template-body file://packaged.yaml \
               --permission-model SELF_MANAGED \
-              --administration-role-arn arn:aws:iam::205500199161:role/AWSCloudFormationStackSetAdministrationRole \
+              --administration-role-arn arn:aws:iam::${{secrets.MANAGEMENT_ACCOUNT_ID}}:role/AWSCloudFormationStackSetAdministrationRole \
               --capabilities CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
               --region us-east-1
 
             # Only create instances on the first run (initial creation)
             aws cloudformation create-stack-instances \
               --stack-set-name Proj1-Dev-Infrastructure \
-              --accounts "017677777575" \
+              --accounts "${{secrets.MEMBER_ACCOUNT_ID}}" \
               --regions "us-east-1"
           fi
