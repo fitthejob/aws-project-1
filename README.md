@@ -4,7 +4,7 @@ An enterprise-grade CI/CD pipeline that deploys a modular, multi-tier network ar
 
 ---
 
-## 🌐 Network Configuration (`network-stack.template.yaml`)
+##Network Configuration (`network-stack.template.yaml`)
 
 The network layer defines a highly structured VPC environment:
 
